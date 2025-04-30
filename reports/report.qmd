@@ -535,24 +535,16 @@ run_sql_and_return_html(cnx,"""
 WITH counts AS (
   SELECT `Region`, `Income Group`, COUNT(*) AS country_count
   FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
+  WHERE `Region` IS NOT NULL
   GROUP BY `Region`, `Income Group`
-),
-region_totals AS (
-  SELECT `Region`, COUNT(*) AS region_total
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
-  GROUP BY `Region`
 ),
 overall_total AS (SELECT COUNT(*) AS total FROM wdi_country WHERE `Region` IS NOT NULL)
 SELECT 
-  c.`Region`, 
-  c.`Income Group`, 
-  c.country_count,
-  (c.country_count / o.total) * 100 AS percent_total
-FROM counts c
-CROSS JOIN overall_total o
-JOIN region_totals r ON c.`Region` = r.`Region`;
+  `Region`,
+  `Income Group`,
+  country_count,
+  ROUND((country_count / (SELECT total FROM overall_total)) * 100, 2) AS percent_of_total
+FROM counts;
 """)
 
 
@@ -566,37 +558,19 @@ JOIN region_totals r ON c.`Region` = r.`Region`;
 ## columns, Region in the rows and Percent of total in each cell of the table.
 
 run_sql_and_return_html(cnx,"""
-WITH base AS (
-  SELECT 
-    `Region`, 
-    `Income Group`, 
-    COUNT(*) AS count
+WITH income_totals AS (
+  SELECT `Income Group`, COUNT(*) AS count
   FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
-  GROUP BY `Region`, `Income Group`
+  WHERE `Region` IS NOT NULL
+  GROUP BY `Income Group`
 ),
-totals AS (
-  SELECT 
-    `Region`, 
-    SUM(count) AS total
-  FROM base
-  GROUP BY `Region`
-)
+overall_total AS (SELECT COUNT(*) AS total FROM wdi_country WHERE `Region` IS NOT NULL)
 SELECT 
-  b.`Region`,
-  ROUND(SUM(CASE WHEN b.`Income Group` = 'High income' THEN b.count ELSE 0 END) * 100.0 / t.total, 2) AS High_Income,
-  ROUND(SUM(CASE WHEN b.`Income Group` = 'Upper middle income' THEN b.count ELSE 0 END) * 100.0 / t.total, 2) AS Upper_Middle,
-  ROUND(SUM(CASE WHEN b.`Income Group` = 'Lower middle income' THEN b.count ELSE 0 END) * 100.0 / t.total, 2) AS Lower_Middle,
-  ROUND(SUM(CASE WHEN b.`Income Group` = 'Low income' THEN b.count ELSE 0 END) * 100.0 / t.total, 2) AS Low_Income,
-  ROUND(SUM(CASE WHEN b.`Income Group` NOT IN ('High income', 'Upper middle income', 'Lower middle income', 'Low income') THEN b.count ELSE 0 END) * 100.0 / t.total, 2) AS Other
-FROM 
-  base b
-JOIN 
-  totals t ON b.`Region` = t.`Region`
-GROUP BY 
-  b.`Region`
-ORDER BY 
-  b.`Region`;
+  `Income Group`,
+  count,
+  ROUND((count / (SELECT total FROM overall_total)) * 100, 2) AS percent
+FROM income_totals
+ORDER BY `Income Group`;
 """)
 
 ```
