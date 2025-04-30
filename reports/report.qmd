@@ -201,11 +201,10 @@ List the country full names and regions for all countries in north america.
 ## (skills: select, where, order by)
 
 run_sql_and_return_html(cnx,"""
-SELECT `Region`, COUNT(*) AS "Country Count"
-FROM wdi_country
-WHERE `Region` IS NOT NULL
-GROUP BY `Region`
-ORDER BY `Country Count` DESC;
+SELECT `Long Name`, `Region`
+FROM world_bank_data.wdi_country
+WHERE `Region` = 'North America'
+ORDER BY `Long Name`;
 """)
 
 ```
@@ -545,30 +544,15 @@ region_totals AS (
   WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
   GROUP BY `Region`
 ),
-income_totals AS (
-  SELECT `Income Group`, COUNT(*) AS income_total
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
-  GROUP BY `Income Group`
-),
-overall_total AS (
-  SELECT COUNT(*) AS overall_total
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
-)
+overall_total AS (SELECT COUNT(*) AS total FROM wdi_country WHERE `Region` IS NOT NULL)
 SELECT 
   c.`Region`, 
   c.`Income Group`, 
   c.country_count,
-  r.region_total,
-  i.income_total,
-  o.overall_total,
-  ROUND((c.country_count / o.overall_total) * 100, 2) AS percent_of_total
+  (c.country_count / o.total) * 100 AS percent_total
 FROM counts c
-JOIN region_totals r ON c.`Region` = r.`Region`
-JOIN income_totals i ON c.`Income Group` = i.`Income Group`
-JOIN overall_total o
-ORDER BY c.`Region`, c.`Income Group`;
+CROSS JOIN overall_total o
+JOIN region_totals r ON c.`Region` = r.`Region`;
 """)
 
 
@@ -628,24 +612,18 @@ ORDER BY
 
 run_sql_and_return_html(cnx,"""
 WITH income_totals AS (
-  SELECT `Income Group`, COUNT(*) AS country_count
+  SELECT `Income Group`, COUNT(*) AS count
   FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
+  WHERE `Region` IS NOT NULL
   GROUP BY `Income Group`
 ),
-overall_total AS (
-  SELECT COUNT(*) AS overall_total
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL AND `Income Group` IS NOT NULL
-)
+overall_total AS (SELECT COUNT(*) AS total FROM wdi_country WHERE `Region` IS NOT NULL)
 SELECT 
-  i.`Income Group`, 
-  i.country_count, 
-  o.overall_total,
-  ROUND((i.country_count / o.overall_total) * 100, 2) AS percent_of_total
-FROM income_totals i
-JOIN overall_total o
-ORDER BY i.`Income Group`;
+  `Income Group`,
+  count,
+  ROUND((count / (SELECT total FROM overall_total)) * 100, 2) AS percent
+FROM income_totals
+ORDER BY `Income Group`;
 """)
 
 ```
