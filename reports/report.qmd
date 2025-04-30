@@ -532,25 +532,39 @@ ORDER BY
 ## (skills: select, where, subqueries, joins, aggregate functions)
 
 run_sql_and_return_html(cnx,"""
-WITH counts AS (
-  SELECT `Region`, `Income Group`, COUNT(*) AS country_count
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL
-  GROUP BY `Region`, `Income Group`
+WITH region_counts AS (
+  SELECT 
+    `Region`, 
+    `Income Group`, 
+    COUNT(*) AS country_count
+  FROM 
+    wdi_country 
+  WHERE 
+    `Region` IS NOT NULL
+  GROUP BY 
+    `Region`, `Income Group`
 ),
 region_totals AS (
-  SELECT `Region`, SUM(country_count) AS region_total
-  FROM counts
-  GROUP BY `Region`
+  SELECT 
+    `Region`, 
+    SUM(country_count) AS total 
+  FROM 
+    region_counts 
+  GROUP BY 
+    `Region`
 )
 SELECT 
-  c.`Region`,
-  c.`Income Group`,
-  c.country_count,
-  ROUND((c.country_count / r.region_total) * 100, 1) AS region_percent
-FROM counts c
-JOIN region_totals r ON c.`Region` = r.`Region`
-ORDER BY c.`Region`, c.`Income Group`;
+  rc.`Region`,
+  rc.`Income Group`,
+  rc.country_count,
+  ROUND((rc.country_count / rt.total) * 100, 1) AS region_percent 
+FROM 
+  region_counts rc
+JOIN 
+  region_totals rt 
+  ON rc.`Region` = rt.`Region`
+ORDER BY 
+  rc.`Region`, rc.`Income Group`;
 """)
 
 
@@ -566,12 +580,15 @@ ORDER BY c.`Region`, c.`Income Group`;
 run_sql_and_return_html(cnx,"""
 WITH counts AS (
   SELECT 
-    `Region`,
-    `Income Group`,
+    `Region`, 
+    `Income Group`, 
     COUNT(*) AS country_count
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL
-  GROUP BY `Region`, `Income Group`
+  FROM 
+    wdi_country
+  WHERE 
+    `Region` IS NOT NULL
+  GROUP BY 
+    `Region`, `Income Group`
 )
 SELECT
   `Region`,
@@ -580,9 +597,12 @@ SELECT
   SUM(CASE WHEN `Income Group` = 'Lower middle income' THEN country_count ELSE 0 END) AS Lower_Middle,
   SUM(CASE WHEN `Income Group` = 'Low income' THEN country_count ELSE 0 END) AS Low_Income,
   SUM(country_count) AS Total
-FROM counts
-GROUP BY `Region`
-ORDER BY `Region`;
+FROM 
+  counts
+GROUP BY 
+  `Region`
+ORDER BY 
+  `Region`;
 """)
 
 ```
@@ -597,27 +617,25 @@ ORDER BY `Region`;
 ## (This is much simpler than task 20!)
 
 run_sql_and_return_html(cnx,"""
-WITH income_counts AS (
+WITH income_totals AS (
   SELECT 
-    `Region`,
-    `Income Group`,
-    COUNT(*) AS country_count
-  FROM wdi_country
-  WHERE `Region` IS NOT NULL
-  GROUP BY `Region`, `Income Group`
-),
-region_totals AS (
-  SELECT `Region`, SUM(country_count) AS total
-  FROM income_counts
-  GROUP BY `Region`
+    `Income Group`, 
+    COUNT(*) AS count
+  FROM 
+    wdi_country
+  WHERE 
+    `Region` IS NOT NULL
+  GROUP BY 
+    `Income Group`
 )
-SELECT
-  i.`Income Group`,
-  SUM(i.country_count) AS Total_Countries,
-  ROUND((SUM(i.country_count) / (SELECT COUNT(*) FROM wdi_country WHERE `Region` IS NOT NULL)) * 100, 1) AS Global_Percent
-FROM income_counts i
-GROUP BY i.`Income Group`
-ORDER BY i.`Income Group`;
+SELECT 
+  `Income Group`,
+  count,
+  ROUND((count / 217) * 100, 1) AS global_percent
+FROM 
+  income_totals
+ORDER BY 
+  `Income Group`;
 """)
 
 ```
