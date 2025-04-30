@@ -121,15 +121,15 @@ DROP TABLE IF EXISTS wdi_country_clean;
 
 CREATE TABLE wdi_country_clean AS
 SELECT *
-FROM world_bank_data.wdi_country
+FROM world_bank_data.wdi_country  
 WHERE `Region` IS NOT NULL;
 COMMIT;
 """)
 
-# Count number of countries to verify (should be 217)
+# Verify CLEAN table count (not original)
 run_sql_and_return_html(cnx, """
 SELECT COUNT(*) AS "Number of Countries"
-FROM wdi_country;
+FROM wdi_country_clean;  
 """)
 
 ```
@@ -310,13 +310,11 @@ COMMIT;
 ```{python}
 ## Now, display the country again to verify the change stuck!
 
-run_sql_and_return_html(cnx,"""
-SELECT 
-  `Short Name`, 
-  `Country Code`, 
-  `Income Group`
-FROM wdi_country
-WHERE `Short Name` = 'Venezuela';
+execute_ddl(cnx,"""
+UPDATE wdi_country_clean  -- Update clean table
+SET `Income Group` = 'High income'
+WHERE `Country Code` = 'VEN';
+COMMIT;
 """)
 
 ```
@@ -532,39 +530,18 @@ ORDER BY
 ## (skills: select, where, subqueries, joins, aggregate functions)
 
 run_sql_and_return_html(cnx,"""
-WITH region_counts AS (
+WITH counts AS (
   SELECT 
-    `Region`, 
     `Income Group`, 
     COUNT(*) AS country_count
-  FROM 
-    wdi_country 
-  WHERE 
-    `Region` IS NOT NULL
-  GROUP BY 
-    `Region`, `Income Group`
-),
-region_totals AS (
-  SELECT 
-    `Region`, 
-    SUM(country_count) AS total 
-  FROM 
-    region_counts 
-  GROUP BY 
-    `Region`
+  FROM wdi_country_clean
+  GROUP BY `Income Group`
 )
 SELECT 
-  rc.`Region`,
-  rc.`Income Group`,
-  rc.country_count,
-  ROUND((rc.country_count / rt.total) * 100, 1) AS region_percent 
-FROM 
-  region_counts rc
-JOIN 
-  region_totals rt 
-  ON rc.`Region` = rt.`Region`
-ORDER BY 
-  rc.`Region`, rc.`Income Group`;
+  `Income Group`,
+  country_count,
+  ROUND((country_count / 217) * 100, 1) AS global_percent
+FROM counts;
 """)
 
 
@@ -584,25 +561,21 @@ WITH counts AS (
     `Income Group`, 
     COUNT(*) AS country_count
   FROM 
-    wdi_country
-  WHERE 
-    `Region` IS NOT NULL
+    wdi_country_clean  -- Use cleaned table
   GROUP BY 
     `Region`, `Income Group`
-)
+),
+global_total AS (SELECT COUNT(*) AS total FROM wdi_country_clean)
 SELECT
   `Region`,
-  SUM(CASE WHEN `Income Group` = 'High income' THEN country_count ELSE 0 END) AS High_Income,
-  SUM(CASE WHEN `Income Group` = 'Upper middle income' THEN country_count ELSE 0 END) AS Upper_Middle,
-  SUM(CASE WHEN `Income Group` = 'Lower middle income' THEN country_count ELSE 0 END) AS Lower_Middle,
-  SUM(CASE WHEN `Income Group` = 'Low income' THEN country_count ELSE 0 END) AS Low_Income,
-  SUM(country_count) AS Total
-FROM 
-  counts
-GROUP BY 
-  `Region`
-ORDER BY 
-  `Region`;
+  ROUND((SUM(CASE WHEN `Income Group` = 'High income' THEN country_count ELSE 0 END) / total) * 100, 1) AS "High Income %",
+  ROUND((SUM(CASE WHEN `Income Group` = 'Upper middle income' THEN country_count ELSE 0 END) / total) * 100, 1) AS "Upper Middle %",
+  ROUND((SUM(CASE WHEN `Income Group` = 'Lower middle income' THEN country_count ELSE 0 END) / total) * 100, 1) AS "Lower Middle %", 
+  ROUND((SUM(CASE WHEN `Income Group` = 'Low income' THEN country_count ELSE 0 END) / total) * 100, 1) AS "Low Income %",
+  COUNT(*) AS "Total Countries"
+FROM counts, global_total
+GROUP BY `Region`
+ORDER BY `Region`;
 """)
 
 ```
@@ -621,21 +594,14 @@ WITH income_totals AS (
   SELECT 
     `Income Group`, 
     COUNT(*) AS count
-  FROM 
-    wdi_country
-  WHERE 
-    `Region` = 'Sub-Saharan Africa'
-  GROUP BY 
-    `Income Group`
+  FROM wdi_country_clean
+  GROUP BY `Income Group`
 )
 SELECT 
   `Income Group`,
   count,
-  ROUND((count / 86) * 100, 1) AS region_percent
-FROM 
-  income_totals
-ORDER BY 
-  `Income Group`;
+  ROUND((count / 217) * 100, 1) AS global_percent
+FROM income_totals;
 """)
 
 ```
