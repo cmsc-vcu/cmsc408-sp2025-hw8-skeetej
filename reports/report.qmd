@@ -624,14 +624,14 @@ WITH income_totals AS (
   FROM 
     wdi_country
   WHERE 
-    `Region` IS NOT NULL
+    `Region` = 'Sub-Saharan Africa'
   GROUP BY 
     `Income Group`
 )
 SELECT 
   `Income Group`,
   count,
-  ROUND((count / 217) * 100, 1) AS global_percent
+  ROUND((count / 86) * 100, 1) AS region_percent
 FROM 
   income_totals
 ORDER BY 
@@ -667,6 +667,8 @@ focused on the root *README.md*.
 [Here is some info](https://www.freecodecamp.org/news/how-to-write-a-good-readme-file/) on how to write a good README!
 
 ::: {style="background:lightgray; margin-left:20px; border-top: 3px solid black; border-bottom: 3px solid black; padding-left:20px; padding-right:20px"}
+
 {{< include ../README.md >}}
+
 :::
 
