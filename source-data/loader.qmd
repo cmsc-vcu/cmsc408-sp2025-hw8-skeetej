@@ -1,7 +1,7 @@
 ---
 title: Loader script for Homework 8
-author: John Leonard
-date: last-modified
+author: Jae Skeete
+date: APR 29 2025
 format:
     html:
         theme: cosmo
